@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice OCR Analyzer</title>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --accent: #8b5cf6;
+            --bg: radial-gradient(1200px 600px at 20% -20%, #f8fafc 0%, #eef2ff 45%, #f4f6f8 100%);
+            --card: #ffffff;
+            --paper: #fcfcfc;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            background-attachment: fixed;
+            color: var(--text);
+        }
+
+        /* ---------------- HEADER ---------------- */
+
+        header {
+            background: rgba(255, 255, 255, 0.82);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: saturate(160%) blur(8px);
+        }
+
+        .nav {
+            max-width: 1200px;
+            margin: auto;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--primary);
+            letter-spacing: 0.3px;
+        }
+
+        .nav span {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        /* ---------------- HERO ---------------- */
+
+        .hero {
+            max-width: 1200px;
+            margin: auto;
+            padding: 60px 24px 40px;
+            animation: fadeUp 0.8s ease;
+        }
+
+        .hero h1 {
+            font-size: 40px;
+            margin: 0;
+            line-height: 1.1;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .hero p {
+            color: var(--muted);
+            max-width: 600px;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+        /* ---------------- PANEL ---------------- */
+
+        .panel {
+            max-width: 1200px;
+            margin: auto;
+            padding: 24px;
+        }
+
+        .upload-box {
+            background: var(--card);
+            padding: 32px;
+            border-radius: 18px;
+            box-shadow:
+                0 20px 40px rgba(37, 99, 235, 0.08),
+                0 6px 14px rgba(0, 0, 0, 0.06);
+            animation: fadeUp 1s ease;
+            border: 1px solid var(--border);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .dropzone {
+            margin-bottom: 16px;
+            width: 100%;
+            min-height: 180px;
+            padding: 28px;
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            background: linear-gradient(180deg, #ffffff, #fafafa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 8px;
+            cursor: pointer;
+            transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.15s ease;
+        }
+
+        .dropzone .dz-icon {
+            font-size: 34px;
+            color: var(--primary);
+        }
+
+        .dropzone .dz-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .dropzone .dz-sub {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .dropzone.dz-active {
+            border-color: #c7d2fe;
+            box-shadow: 0 10px 24px rgba(99, 102, 241, 0.16), inset 0 0 0 9999px rgba(99, 102, 241, 0.06);
+            transform: scale(1.01);
+        }
+
+        button {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 10px 18px rgba(37, 99, 235, 0.22);
+            transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        }
+
+        button:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+            box-shadow: 0 16px 28px rgba(37, 99, 235, 0.28);
+        }
+
+        .previews {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .preview-item {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.06);
+            animation: fadeUp 0.4s ease;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 90px;
+            object-fit: cover;
+            background: #f3f4f6;
+        }
+
+        .preview-caption {
+            padding: 8px;
+            font-size: 12px;
+            color: #374151;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ---------------- RESULTS ---------------- */
+
+        .results {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 30px;
+        }
+
+        .invoice-card {
+            position: relative;
+            background: var(--paper);
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow:
+                0 30px 45px rgba(0, 0, 0, 0.08),
+                0 12px 22px rgba(0, 0, 0, 0.06);
+            animation: cardIn 550ms cubic-bezier(.23, 1, .32, 1);
+            border: 1px solid #eceff4;
+            overflow: hidden;
+            transform-origin: center;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .invoice-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 64px;
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.12), rgba(139, 92, 246, 0.12));
+            border-bottom: 1px dashed #e6eaf1;
+        }
+
+        .invoice-card::after {
+            content: "";
+            position: absolute;
+            top: 64px;
+            bottom: 0;
+            left: 26px;
+            width: 1px;
+            background:
+                repeating-linear-gradient(to bottom,
+                    rgba(0, 0, 0, 0.06) 0px,
+                    rgba(0, 0, 0, 0.06) 8px,
+                    transparent 8px,
+                    transparent 16px);
+            opacity: 0.55;
+        }
+
+        .invoice-card:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow:
+                0 40px 60px rgba(0, 0, 0, 0.10),
+                0 18px 28px rgba(0, 0, 0, 0.07);
+        }
+
+        .invoice-card h3 {
+            margin-top: 2px;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            color: #0f172a;
+        }
+
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-top: 12px;
+        }
+
+        .badge {
+            background: #eef2ff;
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: inset 0 -1px 0 rgba(37, 99, 235, 0.08);
+        }
+
+        .meta .badge:first-child::before {
+            content: "🗓";
+            font-size: 14px;
+        }
+
+        .meta .badge:last-child::before {
+            content: "💵";
+            font-size: 14px;
+        }
+
+        .note {
+            background:
+                linear-gradient(180deg, #ffffff, #fbfbfb),
+                repeating-linear-gradient(to bottom,
+                    transparent 0px,
+                    transparent 28px,
+                    rgba(37, 99, 235, 0.06) 28px,
+                    rgba(37, 99, 235, 0.06) 29px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 13px;
+            color: #374151;
+            white-space: pre-wrap;
+            max-height: 260px;
+            overflow-y: auto;
+            box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+        }
+
+        /* ---------------- FOOTER ---------------- */
+
+        footer {
+            display: none;
+            margin-top: 60px;
+            background: rgba(255, 255, 255, 0.88);
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        /* ---------------- ANIMATIONS ---------------- */
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes cardIn {
+            0% {
+                opacity: 0;
+                transform: translateY(18px) scale(0.98);
+                filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.08));
+            }
+        }
+
+        .empty {
+            color: var(--muted);
+            font-size: 15px;
+            padding: 24px 24px 24px 46px;
+            position: relative;
+        }
+
+        .empty::before {
+            content: "";
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid #c7d2fe;
+            border-top-color: var(--primary);
+            transform: translateY(-50%);
+            animation: spin 0.85s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: translateY(-50%) rotate(360deg);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition: none !important;
+            }
+        }
+
+        /* ---------------- SPLIT VIEW & CONTROLS ---------------- */
+        .split-view {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 800px) {
+            .split-view {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .controls-panel {
+            min-width: 0;
+        }
+
+        .preview-panel {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .preview-panel h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 16px;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        .live-preview-box {
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .live-preview-box img {
+            max-width: 100%;
+            max-height: 500px;
+            height: auto;
+            display: block;
+        }
+
+        .placeholder-text {
+            color: #94a3b8;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .placeholder-text::before {
+            content: "🖼";
+            font-size: 24px;
+            opacity: 0.5;
+        }
+
+        .settings-group {
+            margin: 20px 0;
+            padding: 16px;
+            background: #f1f5f9;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .settings-group label {
+            display: block;
+            margin-bottom: 16px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .settings-group label::before {
+            content: "⚙️";
+        }
+
+        .slider-control {
+            margin-bottom: 16px;
+        }
+        .slider-control:last-child {
+            margin-bottom: 0;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 6px;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .slider-control input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            height: 6px;
+            background: #cbd5e1;
+            border-radius: 3px;
+            appearance: none;
+        }
+        .slider-control input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="nav">
+            <div class="logo">Invoice OCR Analyzer</div>
+            <span>Computer Vision Project</span>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>Invoice Text Extraction</h1>
+        <p>
+            Upload invoice images to extract full OCR text and automatically
+            identify invoices based on date and total amount.
+        </p>
+    </section>
+
+    <section class="panel">
+        <div class="upload-box">
+            <div class="split-view">
+                <!-- Left: Upload & Settings -->
+                <div class="controls-panel">
+                    <form id="invoiceForm">
+                        <div id="dropzone" class="dropzone">
+                            <div class="dz-icon">🧾</div>
+                            <div class="dz-title">Drag & drop invoice images</div>
+                            <div class="dz-sub">or click to browse</div>
+                        </div>
+                        <input type="file" name="images" multiple accept="image/*">
+                        
+                        <div class="settings-group">
+                            <label>Preprocessing Settings</label>
+                            
+                            <div class="slider-control">
+                                <div class="slider-label">
+                                    <span>Contrast</span>
+                                    <span id="val-contrast">1.0</span>
+                                </div>
+                                <input type="range" id="contrast" name="contrast" min="0.5" max="3.0" step="0.1" value="1.0">
+                            </div>
+
+                            <div class="slider-control">
+                                <div class="slider-label">
+                                    <span>Brightness</span>
+                                    <span id="val-brightness">0</span>
+                                </div>
+                                <input type="range" id="brightness" name="brightness" min="-100" max="100" step="1" value="0">
+                            </div>
+
+                            <div class="slider-control">
+                                <div class="slider-label">
+                                    <span>Blur</span>
+                                    <span id="val-blur">0</span>
+                                </div>
+                                <input type="range" id="blur" name="blur" min="0" max="10" step="1" value="0">
+                            </div>
+                        </div>
+
+                        <div id="previews" class="previews"></div>
+                        <button type="submit">Analyze Invoices</button>
+                    </form>
+                </div>
+
+                <!-- Right: Live Preview -->
+                <div class="preview-panel">
+                    <h3>Live Preview</h3>
+                    <div id="live-preview-container" class="live-preview-box">
+                        <span class="placeholder-text">Upload an image to see preview</span>
+                        <img id="live-preview-img" src="" alt="Live Preview" style="display: none;">
+                        <div id="preview-loading" class="spinner" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="results" class="results"></section>
+
+    <footer>
+        <div class="footer-content">
+            <span>© 2026 Invoice OCR Analyzer</span>
+            <span>Computer Vision – OpenCV & OCR</span>
+        </div>
+    </footer>
+
+    <script>
+        const fileInput = document.querySelector('input[name="images"]');
+        
+        // --- Preprocessing Controls ---
+        const contrastInput = document.getElementById("contrast");
+        const brightnessInput = document.getElementById("brightness");
+        const blurInput = document.getElementById("blur");
+        
+        const valContrast = document.getElementById("val-contrast");
+        const valBrightness = document.getElementById("val-brightness");
+        const valBlur = document.getElementById("val-blur");
+        
+        const livePreviewImg = document.getElementById("live-preview-img");
+        const livePreviewContainer = document.getElementById("live-preview-container");
+        const placeholderText = livePreviewContainer.querySelector(".placeholder-text");
+
+        let previewDebounce = null;
+
+        const updatePreview = () => {
+             const files = fileInput.files;
+             if (!files || files.length === 0) {
+                 livePreviewImg.style.display = 'none';
+                 placeholderText.style.display = 'flex';
+                 return;
+             }
+
+             const file = files[0];
+             const contrast = contrastInput.value;
+             const brightness = brightnessInput.value;
+             const blur = blurInput.value;
+
+             valContrast.textContent = contrast;
+             valBrightness.textContent = brightness;
+             valBlur.textContent = blur;
+
+             if (previewDebounce) clearTimeout(previewDebounce);
+
+             previewDebounce = setTimeout(async () => {
+                 const fd = new FormData();
+                 fd.append("image", file);
+                 fd.append("contrast", contrast);
+                 fd.append("brightness", brightness);
+                 fd.append("blur", blur);
+
+                 livePreviewImg.style.opacity = "0.6";
+
+                 try {
+                     const res = await fetch("/preview", { method: "POST", body: fd });
+                     if (res.ok) {
+                         const blob = await res.blob();
+                         const url = URL.createObjectURL(blob);
+                         // Revoke old object URL if exists to avoid leaks, but for simplicity here we just replace
+                         if (livePreviewImg.src.startsWith("blob:")) URL.revokeObjectURL(livePreviewImg.src);
+                         livePreviewImg.src = url;
+                         livePreviewImg.style.display = 'block';
+                         placeholderText.style.display = 'none';
+                     }
+                 } catch (err) {
+                     console.error("Preview failed", err);
+                 } finally {
+                     livePreviewImg.style.opacity = "1";
+                 }
+             }, 300); // 300ms debounce
+        };
+
+        [contrastInput, brightnessInput, blurInput].forEach(input => {
+            input.addEventListener("input", updatePreview);
+        });
+
+        const dropzone = document.getElementById("dropzone");
+        const previews = document.getElementById("previews");
+        const results = document.getElementById("results");
+
+        const renderPreviews = (files) => {
+            previews.innerHTML = "";
+            files.slice(0, 8).forEach((f) => {
+                const item = document.createElement("div");
+                item.className = "preview-item";
+                const img = document.createElement("img");
+                const url = URL.createObjectURL(f);
+                img.src = url;
+                img.alt = f.name;
+                img.onload = () => URL.revokeObjectURL(url);
+                const caption = document.createElement("div");
+                caption.className = "preview-caption";
+                caption.textContent = f.name;
+                item.appendChild(img);
+                item.appendChild(caption);
+                previews.appendChild(item);
+            });
+        };
+
+        const renderInvoices = (payload) => {
+            const list = Array.isArray(payload) ?
+                payload :
+                (payload && Array.isArray(payload.invoices) ? payload.invoices : []);
+
+            results.innerHTML = "";
+
+            if (!list || list.length === 0) {
+                results.innerHTML = "";
+                return;
+            }
+
+            list.forEach((inv, index) => {
+                const card = document.createElement("div");
+                card.className = "invoice-card";
+
+                card.innerHTML = `
+            <h3>Invoice ${index + 1}</h3>
+            <div class="meta">
+                <span class="badge">Date: ${inv && inv.date != null ? inv.date : "-"}</span>
+                <span class="badge">Total: ${inv && inv.total != null ? inv.total : "-"}</span>
+            </div>
+            <div class="note">${inv && inv.note != null ? inv.note : ""}</div>
+        `;
+
+                results.appendChild(card);
+            });
+        };
+
+        const loadExistingInvoices = async () => {
+            results.innerHTML = "<p class='empty'>Loading invoices...</p>";
+            try {
+                const res = await fetch("/invoices", {
+                    cache: "no-store"
+                });
+                if (!res.ok) {
+                    renderInvoices([]);
+                    return;
+                }
+                const data = await res.json();
+                renderInvoices(data);
+            } catch {
+                renderInvoices([]);
+            }
+        };
+
+
+        dropzone.addEventListener("click", () => fileInput.click());
+        ["dragenter", "dragover"].forEach((ev) => {
+            dropzone.addEventListener(ev, (e) => {
+                e.preventDefault();
+                dropzone.classList.add("dz-active");
+            });
+        });
+        ["dragleave", "drop"].forEach((ev) => {
+            dropzone.addEventListener(ev, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove("dz-active");
+            });
+        });
+        dropzone.addEventListener("drop", (e) => {
+            const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
+            const dt = new DataTransfer();
+            files.forEach((f) => dt.items.add(f));
+            fileInput.files = dt.files;
+            renderPreviews(files);
+            updatePreview();
+        });
+        fileInput.addEventListener("change", () => {
+             renderPreviews(Array.from(fileInput.files));
+             updatePreview();
+        });
+
+        document.getElementById("invoiceForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+
+            results.innerHTML = "<p class='empty'>Processing invoices...</p>";
+
+            const response = await fetch("/analyze", {
+                method: "POST",
+                body: formData
+            });
+
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                data = [];
+            }
+            renderInvoices(data);
+        });
+
+        document.addEventListener("DOMContentLoaded", loadExistingInvoices);
+    </script>
+
+</body>
+
+</html>
